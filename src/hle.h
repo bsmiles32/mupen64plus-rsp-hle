@@ -50,5 +50,8 @@ void hle_init(struct hle_t* hle,
 
 void hle_execute(struct hle_t* hle);
 
+int hle_load(struct hle_t* hle, const char* filename);
+int hle_save(const struct hle_t* hle, const char* filename);
+
 #endif
 

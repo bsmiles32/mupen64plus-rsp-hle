@@ -74,5 +74,18 @@ struct hle_t
     uint8_t  mp3_buffer[0x1000];
 };
 
+#if 0
+#define HLE_DUMP(hle, filename, hitcount)   \
+do                                          \
+{                                           \
+    static unsigned int count = hitcount;   \
+    if (--count == 0)                       \
+        hle_save(hle, filename);            \
+} while(false);
+
+#else
+#define HLE_DUMP(hle, filename, hitcount)
+#endif
+
 #endif
 

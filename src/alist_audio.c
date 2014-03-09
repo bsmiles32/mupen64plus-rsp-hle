@@ -257,6 +257,8 @@ void alist_process_audio(struct hle_t* hle)
         MIXER,          INTERLEAVE,     POLEF,          SETLOOP
     };
 
+    HLE_DUMP(hle, "alist_audio_200.bin", 200);
+
     clear_segments(hle);
     alist_process(hle, ABI, 0x10);
 }

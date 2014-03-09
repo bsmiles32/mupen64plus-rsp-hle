@@ -23,10 +23,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-
-#ifdef ENABLE_TASK_DUMP
 #include <stdio.h>
-#endif
 
 #include "hle_external.h"
 #include "hle_internal.h"
@@ -130,6 +127,189 @@ void hle_execute(struct hle_t* hle)
         rsp_break(hle, 0);
     }
 }
+
+int hle_load(struct hle_t* hle, const char* const filename)
+{
+    FILE* f;
+
+    HleVerboseMessage(hle->user_defined, "Loading hle state from %s", filename);
+
+    f = fopen(filename, "rb");
+
+    if (f == NULL) {
+        HleErrorMessage(hle->user_defined, "Cannot load hle state from %s", filename);
+        return 1;
+    }
+
+    /* FIXME: make it more robust */
+
+    /* n64 memory */
+    fread(hle->dram, sizeof(hle->dram[0]), 0x800000, f);
+    fread(hle->dmem, sizeof(hle->dmem[0]), 0x1000  , f);
+    fread(hle->imem, sizeof(hle->imem[0]), 0x1000  , f);
+
+    /* n64 registers */
+    fread(hle->mi_intr,      sizeof(*hle->mi_intr),      1, f);
+    fread(hle->sp_mem_addr,  sizeof(*hle->sp_mem_addr),  1, f);
+    fread(hle->sp_dram_addr, sizeof(*hle->sp_dram_addr), 1, f);
+    fread(hle->sp_rd_length, sizeof(*hle->sp_rd_length), 1, f);
+    fread(hle->sp_wr_length, sizeof(*hle->sp_wr_length), 1, f);
+    fread(hle->sp_status,    sizeof(*hle->sp_status),    1, f);
+    fread(hle->sp_dma_full,  sizeof(*hle->sp_dma_full),  1, f);
+    fread(hle->sp_dma_busy,  sizeof(*hle->sp_dma_busy),  1, f);
+    fread(hle->sp_pc,        sizeof(*hle->sp_pc),        1, f);
+    fread(hle->sp_semaphore, sizeof(*hle->sp_semaphore), 1, f);
+    fread(hle->dpc_start,    sizeof(*hle->dpc_start),    1, f);
+    fread(hle->dpc_end,      sizeof(*hle->dpc_end),      1, f);
+    fread(hle->dpc_current,  sizeof(*hle->dpc_current),  1, f);
+    fread(hle->dpc_status,   sizeof(*hle->dpc_status),   1, f);
+    fread(hle->dpc_clock,    sizeof(*hle->dpc_clock),    1, f);
+    fread(hle->dpc_bufbusy,  sizeof(*hle->dpc_bufbusy),  1, f);
+    fread(hle->dpc_pipebusy, sizeof(*hle->dpc_pipebusy), 1, f);
+    fread(hle->dpc_tmem,     sizeof(*hle->dpc_tmem),     1, f);
+
+    /* user defined is not serialized */
+
+    /* alist buffer */
+    fread(hle->alist_buffer, sizeof(hle->alist_buffer[0]), 0x1000, f);
+
+    /* alist_audio state */
+    fread(hle->alist_audio.segments,   sizeof(hle->alist_audio.segments[0]), N_SEGMENTS, f);
+    fread(&hle->alist_audio.in,        sizeof(hle->alist_audio.in),          1,          f);
+    fread(&hle->alist_audio.out,       sizeof(hle->alist_audio.out),         1,          f);
+    fread(&hle->alist_audio.count,     sizeof(hle->alist_audio.count),       1,          f);
+    fread(&hle->alist_audio.dry_right, sizeof(hle->alist_audio.dry_right),   1,          f);
+    fread(&hle->alist_audio.wet_left,  sizeof(hle->alist_audio.wet_left),    1,          f);
+    fread(&hle->alist_audio.wet_right, sizeof(hle->alist_audio.wet_right),   1,          f);
+    fread(&hle->alist_audio.dry,       sizeof(hle->alist_audio.dry),         1,          f);
+    fread(&hle->alist_audio.wet,       sizeof(hle->alist_audio.wet),         1,          f);
+    fread(hle->alist_audio.vol,        sizeof(hle->alist_audio.vol[0]),      2,          f);
+    fread(hle->alist_audio.target,     sizeof(hle->alist_audio.target[0]),   2,          f);
+    fread(hle->alist_audio.rate,       sizeof(hle->alist_audio.rate[0]),     2,          f);
+    fread(&hle->alist_audio.loop,      sizeof(hle->alist_audio.loop),        1,          f);
+    fread(hle->alist_audio.table,      sizeof(hle->alist_audio.table[0]),    16*8,       f);
+
+    /* alist_naudio state */
+    fread(&hle->alist_naudio.dry,      sizeof(hle->alist_naudio.dry),       1,    f);
+    fread(&hle->alist_naudio.wet,      sizeof(hle->alist_naudio.wet),       1,    f);
+    fread(hle->alist_naudio.vol,       sizeof(hle->alist_naudio.vol[0]),    2,    f);
+    fread(hle->alist_naudio.target,    sizeof(hle->alist_naudio.target[0]), 2,    f);
+    fread(hle->alist_naudio.rate,      sizeof(hle->alist_naudio.rate[0]),   2,    f);
+    fread(&hle->alist_naudio.loop,     sizeof(hle->alist_naudio.loop),      1,    f);
+    fread(hle->alist_naudio.table,     sizeof(hle->alist_naudio.table[0]),  16*8, f);
+
+    /* alist_nead state */
+    fread(&hle->alist_nead.in,               sizeof(hle->alist_nead.in),                   1,   f);
+    fread(&hle->alist_nead.out,              sizeof(hle->alist_nead.out),                  1,   f);
+    fread(&hle->alist_nead.count,            sizeof(hle->alist_nead.count),                1,   f);
+    fread(hle->alist_nead.env_values,        sizeof(hle->alist_nead.env_values[0]),        3,   f);
+    fread(hle->alist_nead.env_steps,         sizeof(hle->alist_nead.env_steps[0]),         3,   f);
+    fread(&hle->alist_nead.loop,             sizeof(hle->alist_nead.loop),                 1,   f);
+    fread(hle->alist_nead.table,             sizeof(hle->alist_nead.table[0]),             16*8,f);
+    fread(&hle->alist_nead.filter_count,     sizeof(hle->alist_nead.filter_count),         1,   f);
+    fread(hle->alist_nead.filter_lut_address,sizeof(hle->alist_nead.filter_lut_address[0]),2,   f);
+
+    /* mp3 ucode state */
+    fread(hle->mp3_buffer,  sizeof(hle->mp3_buffer[0]), 0x1000, f);
+
+    fclose(f);
+
+    HleVerboseMessage(hle->user_defined, "hle state successfuly loaded");
+
+    return 0;
+}
+
+int hle_save(const struct hle_t* hle, const char* filename)
+{
+    FILE* f;
+
+    HleVerboseMessage(hle->user_defined, "Saving hle state to %s", filename);
+
+    f = fopen(filename, "wb");
+
+    if (f == NULL) {
+        HleErrorMessage(hle->user_defined, "Cannot save hle state to %s", filename);
+        return 1;
+    }
+
+    /* FIXME: make it more robust */
+
+    /* n64 memory */
+    fwrite(hle->dram, sizeof(hle->dram[0]), 0x800000, f);
+    fwrite(hle->dmem, sizeof(hle->dmem[0]), 0x1000  , f);
+    fwrite(hle->imem, sizeof(hle->imem[0]), 0x1000  , f);
+
+    /* n64 registers */
+    fwrite(hle->mi_intr,      sizeof(*hle->mi_intr),      1, f);
+    fwrite(hle->sp_mem_addr,  sizeof(*hle->sp_mem_addr),  1, f);
+    fwrite(hle->sp_dram_addr, sizeof(*hle->sp_dram_addr), 1, f);
+    fwrite(hle->sp_rd_length, sizeof(*hle->sp_rd_length), 1, f);
+    fwrite(hle->sp_wr_length, sizeof(*hle->sp_wr_length), 1, f);
+    fwrite(hle->sp_status,    sizeof(*hle->sp_status),    1, f);
+    fwrite(hle->sp_dma_full,  sizeof(*hle->sp_dma_full),  1, f);
+    fwrite(hle->sp_dma_busy,  sizeof(*hle->sp_dma_busy),  1, f);
+    fwrite(hle->sp_pc,        sizeof(*hle->sp_pc),        1, f);
+    fwrite(hle->sp_semaphore, sizeof(*hle->sp_semaphore), 1, f);
+    fwrite(hle->dpc_start,    sizeof(*hle->dpc_start),    1, f);
+    fwrite(hle->dpc_end,      sizeof(*hle->dpc_end),      1, f);
+    fwrite(hle->dpc_current,  sizeof(*hle->dpc_current),  1, f);
+    fwrite(hle->dpc_status,   sizeof(*hle->dpc_status),   1, f);
+    fwrite(hle->dpc_clock,    sizeof(*hle->dpc_clock),    1, f);
+    fwrite(hle->dpc_bufbusy,  sizeof(*hle->dpc_bufbusy),  1, f);
+    fwrite(hle->dpc_pipebusy, sizeof(*hle->dpc_pipebusy), 1, f);
+    fwrite(hle->dpc_tmem,     sizeof(*hle->dpc_tmem),     1, f);
+
+    /* user defined is not serialized */
+
+    /* alist buffer */
+    fwrite(hle->alist_buffer, sizeof(hle->alist_buffer[0]), 0x1000, f);
+
+    /* alist_audio state */
+    fwrite(hle->alist_audio.segments,   sizeof(hle->alist_audio.segments[0]), N_SEGMENTS, f);
+    fwrite(&hle->alist_audio.in,        sizeof(hle->alist_audio.in),          1,          f);
+    fwrite(&hle->alist_audio.out,       sizeof(hle->alist_audio.out),         1,          f);
+    fwrite(&hle->alist_audio.count,     sizeof(hle->alist_audio.count),       1,          f);
+    fwrite(&hle->alist_audio.dry_right, sizeof(hle->alist_audio.dry_right),   1,          f);
+    fwrite(&hle->alist_audio.wet_left,  sizeof(hle->alist_audio.wet_left),    1,          f);
+    fwrite(&hle->alist_audio.wet_right, sizeof(hle->alist_audio.wet_right),   1,          f);
+    fwrite(&hle->alist_audio.dry,       sizeof(hle->alist_audio.dry),         1,          f);
+    fwrite(&hle->alist_audio.wet,       sizeof(hle->alist_audio.wet),         1,          f);
+    fwrite(hle->alist_audio.vol,        sizeof(hle->alist_audio.vol[0]),      2,          f);
+    fwrite(hle->alist_audio.target,     sizeof(hle->alist_audio.target[0]),   2,          f);
+    fwrite(hle->alist_audio.rate,       sizeof(hle->alist_audio.rate[0]),     2,          f);
+    fwrite(&hle->alist_audio.loop,      sizeof(hle->alist_audio.loop),        1,          f);
+    fwrite(hle->alist_audio.table,      sizeof(hle->alist_audio.table[0]),    16*8,       f);
+
+    /* alist_naudio state */
+    fwrite(&hle->alist_naudio.dry,      sizeof(hle->alist_naudio.dry),       1,    f);
+    fwrite(&hle->alist_naudio.wet,      sizeof(hle->alist_naudio.wet),       1,    f);
+    fwrite(hle->alist_naudio.vol,       sizeof(hle->alist_naudio.vol[0]),    2,    f);
+    fwrite(hle->alist_naudio.target,    sizeof(hle->alist_naudio.target[0]), 2,    f);
+    fwrite(hle->alist_naudio.rate,      sizeof(hle->alist_naudio.rate[0]),   2,    f);
+    fwrite(&hle->alist_naudio.loop,     sizeof(hle->alist_naudio.loop),      1,    f);
+    fwrite(hle->alist_naudio.table,     sizeof(hle->alist_naudio.table[0]),  16*8, f);
+
+    /* alist_nead state */
+    fwrite(&hle->alist_nead.in,               sizeof(hle->alist_nead.in),                   1,   f);
+    fwrite(&hle->alist_nead.out,              sizeof(hle->alist_nead.out),                  1,   f);
+    fwrite(&hle->alist_nead.count,            sizeof(hle->alist_nead.count),                1,   f);
+    fwrite(hle->alist_nead.env_values,        sizeof(hle->alist_nead.env_values[0]),        3,   f);
+    fwrite(hle->alist_nead.env_steps,         sizeof(hle->alist_nead.env_steps[0]),         3,   f);
+    fwrite(&hle->alist_nead.loop,             sizeof(hle->alist_nead.loop),                 1,   f);
+    fwrite(hle->alist_nead.table,             sizeof(hle->alist_nead.table[0]),             16*8,f);
+    fwrite(&hle->alist_nead.filter_count,     sizeof(hle->alist_nead.filter_count),         1,   f);
+    fwrite(hle->alist_nead.filter_lut_address,sizeof(hle->alist_nead.filter_lut_address[0]),2,   f);
+
+    /* mp3 ucode state */
+    fwrite(hle->mp3_buffer,  sizeof(hle->mp3_buffer[0]), 0x1000, f);
+
+    fclose(f);
+
+    HleVerboseMessage(hle->user_defined, "hle state successfuly saved");
+
+    return 0;
+}
+
 
 /* local functions */
 static unsigned int sum_bytes(const unsigned char *bytes, unsigned int size)
