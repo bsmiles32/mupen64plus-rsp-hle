@@ -248,8 +248,9 @@ SOURCE = \
 	$(SRCDIR)/memory.c \
 	$(SRCDIR)/mp3.c \
 	$(SRCDIR)/musyx.c \
+	$(SRCDIR)/plugin.c \
 	$(SRCDIR)/re2.c \
-	$(SRCDIR)/plugin.c
+	$(SRCDIR)/zsort_wdc.c
 
 # generate a list of object files build, make a temporary directory for them
 OBJECTS := $(patsubst $(SRCDIR)/%.c, $(OBJDIR)/%.o, $(filter %.c, $(SOURCE)))

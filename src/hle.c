@@ -245,12 +245,21 @@ static bool try_fast_audio_dispatching(struct hle_t* hle)
 
 static bool try_fast_task_dispatching(struct hle_t* hle)
 {
+    uint32_t ucode_data = *dmem_u32(hle, TASK_UCODE_DATA);
+
     /* identify task ucode by its type */
     switch (*dmem_u32(hle, TASK_TYPE)) {
     case 1:
         /* Resident evil 2 */
         if (*dmem_u32(hle, TASK_DATA_PTR) == 0)
             return false;
+
+        /* HACK: force zsort_wdc_task */
+        if (*dram_u32(hle, ucode_data + 0xbb0) == 0x11e811ac)
+        {
+            zsort_wdc_task(hle);
+            return true;
+        }
 
         if (FORWARD_GFX) {
             forward_gfx_task(hle);
